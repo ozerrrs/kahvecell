@@ -26,7 +26,15 @@ kahvecell/
 │   │   └── api/v1/         endpoint'ler (/api/v1/...)
 │   ├── scripts/seed.py     örnek veri betiği
 │   └── tests/              otomatik testler
-├── frontend/           React arayüzü
+├── frontend/           React (Vite) arayüzü
+│   └── src/
+│       ├── App.jsx         sayfa haritası (React Router)
+│       ├── api/            backend istemcisi (axios) ve endpoint fonksiyonları
+│       ├── store/          oturum durumu (Zustand, tarayıcıda saklanır)
+│       ├── components/     Layout, ProtectedRoute, ShopMap (Leaflet), durum göstergeleri
+│       ├── hooks/          useApi: yükleniyor / hata / veri yönetimi
+│       ├── pages/          sayfalar
+│       └── utils/          form doğrulama, sabitler
 └── docs/               dokümantasyon
 ```
 
@@ -64,6 +72,7 @@ copy .env.example .env
 ```bash
 cd frontend
 npm install
+cp .env.example .env        # Windows: copy .env.example .env
 ```
 
 ## Çalıştırma
