@@ -1,10 +1,10 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.schemas.user import UserOut, normalize_phone_number
+from app.schemas.user import UserOut, normalize_email, normalize_full_name, normalize_phone_number
 
 
 class PhoneNumberIn(BaseModel):
-    phone_number: str = Field(examples=["0555 123 45 67"])
+    phone_number: str = Field(examples=["05551234567"])
 
     @field_validator("phone_number")
     @classmethod
@@ -13,12 +13,30 @@ class PhoneNumberIn(BaseModel):
 
 
 class RegisterRequest(PhoneNumberIn):
-    pass
+    model_config = ConfigDict(json_schema_extra={
+        "example": {"phone_number": "05559998877", "full_name": "Ali Yılmaz", "email": "ali@example.com"}
+    })
+
+    full_name: str = Field(min_length=2, max_length=100)
+    email: str | None = Field(default=None, max_length=255)
+
+    @field_validator("full_name")
+    @classmethod
+    def _check_name(cls, value: str) -> str:
+        return normalize_full_name(value)
+
+    @field_validator("email")
+    @classmethod
+    def _check_email(cls, value: str | None) -> str | None:
+        return normalize_email(value)
 
 
-class RegisterResponse(BaseModel):
+class RequestOtpRequest(PhoneNumberIn):
+    model_config = ConfigDict(json_schema_extra={"example": {"phone_number": "05551234567"}})
+
+
+class OtpSentResponse(BaseModel):
     phone_number: str
-    is_new_user: bool
     otp_expires_in_seconds: int
     message: str
     dev_otp_hint: str | None = Field(
@@ -27,7 +45,9 @@ class RegisterResponse(BaseModel):
 
 
 class VerifyOtpRequest(PhoneNumberIn):
-    code: str = Field(pattern=r"^\d{4,6}$", examples=["1234"])
+    model_config = ConfigDict(json_schema_extra={"example": {"phone_number": "05551234567", "code": "1234"}})
+
+    code: str = Field(pattern=r"^\d{4,6}$")
 
 
 class TokenPair(BaseModel):

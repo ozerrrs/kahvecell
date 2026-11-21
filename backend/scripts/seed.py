@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal, init_db
 from app.models import Payment, Product, Shop, Subscription, SubscriptionPlan, User
 from app.models.base import utcnow
-from app.models.enums import PaymentStatus, PlanType, SubscriptionStatus, UserRole
+from app.models.enums import PaymentPurpose, PaymentStatus, PlanType, SubscriptionStatus, UserRole
 
 # ---------------------------------------------------------------------------
 # Abonelik paketleri (case dokümanı 3.2)
@@ -174,6 +174,7 @@ def seed_test_subscription(db: Session, user: User, plan: SubscriptionPlan) -> N
     db.flush()
     db.add(Payment(
         user_id=user.id, plan_id=plan.id, subscription_id=subscription.id,
+        purpose=PaymentPurpose.NEW_SUBSCRIPTION,
         transaction_id="SEED-TXN-0001", amount=plan.monthly_price,
         status=PaymentStatus.SUCCESS, card_last4="4242",
     ))

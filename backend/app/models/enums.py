@@ -9,6 +9,11 @@ class UserRole(str, enum.Enum):
     ADMIN = "ADMIN"
 
 
+class OtpPurpose(str, enum.Enum):
+    REGISTER = "REGISTER"
+    LOGIN = "LOGIN"
+
+
 class PlanType(str, enum.Enum):
     STARTER = "STARTER"
     PREMIUM = "PREMIUM"
@@ -50,3 +55,9 @@ class MilkType(str, enum.Enum):
 class PaymentStatus(str, enum.Enum):
     SUCCESS = "SUCCESS"
     FAILED = "FAILED"
+
+
+class PaymentPurpose(str, enum.Enum):
+    NEW_SUBSCRIPTION = "NEW_SUBSCRIPTION"
+    UPGRADE = "UPGRADE"
+    RENEWAL = "RENEWAL"

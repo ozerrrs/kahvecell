@@ -1,18 +1,26 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
 from app.models.base import UUIDPrimaryKeyMixin, utcnow
+from app.models.enums import OtpPurpose
 
 
 class OtpCode(UUIDPrimaryKeyMixin, Base):
-    """Telefona gönderilen (simüle) tek kullanımlık doğrulama kodu."""
+    """Telefona gönderilen (simüle) tek kullanımlık doğrulama kodu.
+
+    Kayıt (REGISTER) kodlarında kullanıcının bilgileri de burada bekletilir;
+    hesap ancak telefon doğrulandıktan sonra oluşturulur.
+    """
 
     __tablename__ = "otp_codes"
 
     phone_number: Mapped[str] = mapped_column(String(15), index=True, nullable=False)
+    purpose: Mapped[OtpPurpose] = mapped_column(Enum(OtpPurpose), nullable=False)
+    pending_full_name: Mapped[str | None] = mapped_column(String(100))
+    pending_email: Mapped[str | None] = mapped_column(String(255))
     code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     is_used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

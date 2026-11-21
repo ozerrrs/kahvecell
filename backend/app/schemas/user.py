@@ -1,9 +1,9 @@
 import re
-from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from app.models.enums import CupSize, MilkType, UserRole
+from app.schemas.common import UtcDatetime
 
 _TR_MOBILE = re.compile(r"^5\d{9}$")
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -19,6 +19,24 @@ def normalize_phone_number(value: str) -> str:
     if not _TR_MOBILE.match(digits):
         raise ValueError("Geçerli bir GSM numarası girin (örn. 0555 123 45 67).")
     return f"+90{digits}"
+
+
+def normalize_full_name(value: str) -> str:
+    """Fazla boşlukları temizler, en az 2 karakter ister."""
+    value = " ".join((value or "").split())
+    if len(value) < 2:
+        raise ValueError("Ad soyad en az 2 karakter olmalı.")
+    return value
+
+
+def normalize_email(value: str | None) -> str | None:
+    """Boşsa None, doluysa küçük harfe çevirip biçimini kontrol eder."""
+    if value is None or value.strip() == "":
+        return None
+    value = value.strip().lower()
+    if not _EMAIL.match(value):
+        raise ValueError("Geçerli bir e-posta adresi girin.")
+    return value
 
 
 class UserPreferences(BaseModel):
@@ -37,7 +55,7 @@ class UserOut(BaseModel):
     email: str | None
     role: UserRole
     preferences: UserPreferences | None
-    created_at: datetime
+    created_at: UtcDatetime
 
     @computed_field
     @property
@@ -54,23 +72,13 @@ class UserUpdate(BaseModel):
 
     @field_validator("full_name")
     @classmethod
-    def _strip_name(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        value = " ".join(value.split())
-        if len(value) < 2:
-            raise ValueError("Ad soyad en az 2 karakter olmalı.")
-        return value
+    def _check_name(cls, value: str | None) -> str | None:
+        return None if value is None else normalize_full_name(value)
 
     @field_validator("email")
     @classmethod
     def _check_email(cls, value: str | None) -> str | None:
-        if value is None or value == "":
-            return None
-        value = value.strip().lower()
-        if not _EMAIL.match(value):
-            raise ValueError("Geçerli bir e-posta adresi girin.")
-        return value
+        return normalize_email(value)
 
 
 class RoleUpdate(BaseModel):

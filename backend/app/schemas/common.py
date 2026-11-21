@@ -1,10 +1,20 @@
-"""Standart API yanıt formatı: { success, data, error }."""
+"""Standart API yanıt formatı ({ success, data, error }) ve ortak tipler."""
 
-from typing import Any, Generic, TypeVar
+from datetime import datetime
+from decimal import Decimal
+from typing import Annotated, Any, Generic, TypeVar
 
-from pydantic import BaseModel
+from pydantic import AfterValidator, BaseModel, PlainSerializer
+
+from app.models.base import as_utc
 
 T = TypeVar("T")
+
+# Tarihler her zaman UTC saat dilimi bilgisiyle döner (SQLite bu bilgiyi saklamaz).
+UtcDatetime = Annotated[datetime, AfterValidator(as_utc)]
+
+# Para tutarları veritabanında Decimal tutulur, JSON'da sayı olarak döner (örn. 89.99).
+Money = Annotated[Decimal, PlainSerializer(float, return_type=float)]
 
 
 class ErrorDetail(BaseModel):

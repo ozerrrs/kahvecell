@@ -6,34 +6,45 @@ from app.core.database import get_db
 from app.core.rate_limit import limiter
 from app.schemas.auth import (
     AuthResult,
+    OtpSentResponse,
     RefreshTokenRequest,
     RegisterRequest,
-    RegisterResponse,
+    RequestOtpRequest,
     TokenPair,
     VerifyOtpRequest,
 )
 from app.schemas.common import ApiResponse, MessageOut, ok
 from app.services.auth_service import AuthService
 
-router = APIRouter(prefix="/auth", tags=["Kimlik Doğrulama"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=ApiResponse[RegisterResponse])
+@router.post("/register", response_model=ApiResponse[OtpSentResponse], status_code=status.HTTP_201_CREATED)
 @limiter.limit(settings.auth_rate_limit)
 def register(request: Request, body: RegisterRequest, db: Session = Depends(get_db)):
-    """**1. adım:** GSM numarasına SMS doğrulama kodu gönderir (simülasyon: kod her zaman `1234`).
+    """Yeni kullanıcı kaydı. OTP gönderildikten sonra /verify-otp ile doğrulanır.
 
-    Yeni ve kayıtlı kullanıcılar için aynı adımdır — numara sistemde yoksa doğrulama sonrası hesap açılır.
+    SMS simülasyonu: kod her zaman `1234`. Numara zaten kayıtlıysa **409** döner.
     """
-    return ok(AuthService(db).request_otp(body.phone_number))
+    return ok(AuthService(db).register(body.phone_number, body.full_name, body.email))
+
+
+@router.post("/request-otp", response_model=ApiResponse[OtpSentResponse])
+@limiter.limit(settings.auth_rate_limit)
+def request_otp(request: Request, body: RequestOtpRequest, db: Session = Depends(get_db)):
+    """Kayıtlı kullanıcı için giriş kodu gönderir. Ardından /verify-otp ile doğrulanır.
+
+    Numara kayıtlı değilse **404** döner.
+    """
+    return ok(AuthService(db).request_login_otp(body.phone_number))
 
 
 @router.post("/verify-otp", response_model=ApiResponse[AuthResult])
 @limiter.limit(settings.auth_rate_limit)
 def verify_otp(request: Request, body: VerifyOtpRequest, db: Session = Depends(get_db)):
-    """**2. adım:** Kodu doğrular; `access_token` + `refresh_token` döner.
+    """OTP'yi doğrular, geçerliyse access + refresh token döner.
 
-    `user.profile_completed = false` ise uygulama profil tamamlama ekranını açmalıdır.
+    Kayıt akışında hesap bu adımda oluşturulur (`is_new_user: true`).
     """
     return ok(AuthService(db).verify_otp(body.phone_number, body.code))
 

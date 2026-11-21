@@ -10,7 +10,7 @@ from app.schemas.common import ApiResponse, ok
 from app.schemas.user import RoleUpdate, UserOut
 from app.services.user_service import UserService
 
-router = APIRouter(prefix="/admin", tags=["Admin"])
+router = APIRouter(prefix="/admin", tags=["admin"])
 
 _admin_only = require_roles(UserRole.ADMIN)
 

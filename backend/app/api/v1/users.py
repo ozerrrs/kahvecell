@@ -8,7 +8,7 @@ from app.schemas.common import ApiResponse, ok
 from app.schemas.user import UserOut, UserUpdate
 from app.services.user_service import UserService
 
-router = APIRouter(prefix="/users", tags=["Kullanıcı Profili"])
+router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/me", response_model=ApiResponse[UserOut])

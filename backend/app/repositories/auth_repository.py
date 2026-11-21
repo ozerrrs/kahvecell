@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models import OtpCode, RefreshToken
 from app.models.base import utcnow
+from app.models.enums import OtpPurpose
 
 
 class OtpRepository:
@@ -19,8 +20,23 @@ class OtpRepository:
             .values(is_used=True)
         )
 
-    def create(self, phone_number: str, code_hash: str, expires_at: datetime) -> OtpCode:
-        otp = OtpCode(phone_number=phone_number, code_hash=code_hash, expires_at=expires_at)
+    def create(
+        self,
+        phone_number: str,
+        purpose: OtpPurpose,
+        code_hash: str,
+        expires_at: datetime,
+        pending_full_name: str | None = None,
+        pending_email: str | None = None,
+    ) -> OtpCode:
+        otp = OtpCode(
+            phone_number=phone_number,
+            purpose=purpose,
+            code_hash=code_hash,
+            expires_at=expires_at,
+            pending_full_name=pending_full_name,
+            pending_email=pending_email,
+        )
         self.db.add(otp)
         self.db.flush()
         return otp

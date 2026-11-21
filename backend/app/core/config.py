@@ -8,6 +8,8 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     database_url: str = "sqlite:///./kahvecell.db"
+    # Backend açılırken bekleyen Alembic migration'larını otomatik uygula
+    auto_migrate: bool = True
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
     # JWT
@@ -21,6 +23,9 @@ class Settings(BaseSettings):
     otp_expire_minutes: int = 5
     otp_max_attempts: int = 5
 
+    # Abonelik
+    subscription_period_days: int = 30
+
     # Rate limiting
     rate_limit_enabled: bool = True
     auth_rate_limit: str = "10/minute"
@@ -28,6 +33,11 @@ class Settings(BaseSettings):
     @property
     def is_development(self) -> bool:
         return self.app_env == "development"
+
+    @property
+    def demo_endpoints_enabled(self) -> bool:
+        """Ay sonu simülasyonu gibi demo endpoint'leri üretimde kapalıdır."""
+        return self.app_env != "production"
 
 
 settings = Settings()

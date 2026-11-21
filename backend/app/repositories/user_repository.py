@@ -15,8 +15,14 @@ class UserRepository:
     def get_by_phone(self, phone_number: str) -> User | None:
         return self.db.scalar(select(User).where(User.phone_number == phone_number))
 
-    def create(self, phone_number: str, role: UserRole = UserRole.CUSTOMER) -> User:
-        user = User(phone_number=phone_number, role=role)
+    def create(
+        self,
+        phone_number: str,
+        full_name: str | None = None,
+        email: str | None = None,
+        role: UserRole = UserRole.CUSTOMER,
+    ) -> User:
+        user = User(phone_number=phone_number, full_name=full_name, email=email, role=role)
         self.db.add(user)
         self.db.flush()
         return user

@@ -44,7 +44,7 @@ register_exception_handlers(app)
 app.include_router(api_router)
 
 
-@app.get("/", tags=["Sağlık"])
+@app.get("/", tags=["health"])
 def root():
     """Ana sayfa: backend ayakta mı?"""
     return ok({"message": "KahveCell backend çalışıyor ☕"})

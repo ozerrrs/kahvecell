@@ -1,12 +1,12 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 from app.models.base import UUIDPrimaryKeyMixin, utcnow
-from app.models.enums import PaymentStatus
+from app.models.enums import PaymentPurpose, PaymentStatus
 
 
 class Payment(UUIDPrimaryKeyMixin, Base):
@@ -14,9 +14,10 @@ class Payment(UUIDPrimaryKeyMixin, Base):
 
     __tablename__ = "payments"
 
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     plan_id: Mapped[int] = mapped_column(ForeignKey("subscription_plans.id"), nullable=False)
-    # Başarılı ödemenin başlattığı abonelik (başarısızsa boş)
+    purpose: Mapped[PaymentPurpose] = mapped_column(Enum(PaymentPurpose), nullable=False)
+    # Ödemenin kullanıldığı abonelik. Boşsa ödeme henüz bir aboneliğe bağlanmamıştır.
     subscription_id: Mapped[str | None] = mapped_column(ForeignKey("subscriptions.id"))
     transaction_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
@@ -26,3 +27,6 @@ class Payment(UUIDPrimaryKeyMixin, Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="payments")
+    plan: Mapped["SubscriptionPlan"] = relationship(lazy="joined")
+
+    __table_args__ = (Index("ix_payments_user_created", "user_id", "created_at"),)

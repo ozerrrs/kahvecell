@@ -17,9 +17,10 @@ from app.core.security import (
 )
 from app.models import User
 from app.models.base import as_utc, utcnow
+from app.models.enums import OtpPurpose
 from app.repositories.auth_repository import OtpRepository, RefreshTokenRepository
 from app.repositories.user_repository import UserRepository
-from app.schemas.auth import AuthResult, RegisterResponse, TokenPair
+from app.schemas.auth import AuthResult, OtpSentResponse, TokenPair
 from app.schemas.user import UserOut
 
 logger = logging.getLogger("kahvecell.auth")
@@ -32,23 +33,51 @@ class AuthService:
         self.otps = OtpRepository(db)
         self.refresh_tokens = RefreshTokenRepository(db)
 
-    # ------------------------------------------------------------------ OTP
-    def request_otp(self, phone_number: str) -> RegisterResponse:
-        """Numaraya (simüle) SMS kodu gönderir. Yeni ve mevcut kullanıcılar için aynı akış."""
-        is_new_user = self.users.get_by_phone(phone_number) is None
+    # ------------------------------------------------------------ kayıt/giriş
+    def register(self, phone_number: str, full_name: str, email: str | None) -> OtpSentResponse:
+        """Yeni kullanıcı kaydı: bilgileri bekletir ve doğrulama kodu gönderir.
+
+        Hesap, kod doğrulandığında (/verify-otp) oluşturulur.
+        """
+        if self.users.get_by_phone(phone_number):
+            raise AppException(
+                status.HTTP_409_CONFLICT, "PHONE_ALREADY_REGISTERED",
+                "Bu numara zaten kayıtlı. Giriş yapmak için /auth/request-otp kullanın.",
+            )
+        return self._send_otp(phone_number, OtpPurpose.REGISTER, full_name, email)
+
+    def request_login_otp(self, phone_number: str) -> OtpSentResponse:
+        """Kayıtlı kullanıcının giriş yapabilmesi için doğrulama kodu gönderir."""
+        if self.users.get_by_phone(phone_number) is None:
+            raise AppException(
+                status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND",
+                "Bu numarayla kayıtlı kullanıcı yok. Önce /auth/register ile kayıt olun.",
+            )
+        return self._send_otp(phone_number, OtpPurpose.LOGIN)
+
+    def _send_otp(
+        self,
+        phone_number: str,
+        purpose: OtpPurpose,
+        full_name: str | None = None,
+        email: str | None = None,
+    ) -> OtpSentResponse:
         code = settings.otp_simulated_code
         expires_in = settings.otp_expire_minutes * 60
 
         self.otps.invalidate_active(phone_number)
-        self.otps.create(phone_number, hash_otp(phone_number, code), utcnow() + timedelta(seconds=expires_in))
+        self.otps.create(
+            phone_number, purpose, hash_otp(phone_number, code),
+            utcnow() + timedelta(seconds=expires_in),
+            pending_full_name=full_name, pending_email=email,
+        )
         self.db.commit()
 
-        logger.info("otp_sent phone=%s new_user=%s (SMS simülasyonu)", _mask(phone_number), is_new_user)
-        return RegisterResponse(
+        logger.info("otp_sent phone=%s purpose=%s (SMS simülasyonu)", _mask(phone_number), purpose.value)
+        return OtpSentResponse(
             phone_number=phone_number,
-            is_new_user=is_new_user,
             otp_expires_in_seconds=expires_in,
-            message="Doğrulama kodu SMS ile gönderildi.",
+            message="Doğrulama kodu SMS ile gönderildi. /auth/verify-otp ile doğrulayın.",
             dev_otp_hint=code if settings.is_development else None,
         )
 
@@ -74,10 +103,19 @@ class AuthService:
 
         otp.is_used = True
         user = self.users.get_by_phone(phone_number)
-        is_new_user = user is None
+        is_new_user = otp.purpose == OtpPurpose.REGISTER
+
         if is_new_user:
-            user = self.users.create(phone_number)
+            if user is not None:  # Kod beklerken aynı numara başka yoldan kaydolmuş.
+                self.db.commit()
+                raise AppException(
+                    status.HTTP_409_CONFLICT, "PHONE_ALREADY_REGISTERED", "Bu numara zaten kayıtlı."
+                )
+            user = self.users.create(phone_number, full_name=otp.pending_full_name, email=otp.pending_email)
             logger.info("user_registered user_id=%s", user.id)
+        elif user is None:
+            self.db.commit()
+            raise AppException(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", "Kullanıcı bulunamadı.")
 
         tokens = self._issue_tokens(user)
         self.db.commit()

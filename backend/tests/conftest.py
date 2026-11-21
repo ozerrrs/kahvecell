@@ -7,6 +7,8 @@ import tempfile
 _tmp_dir = tempfile.mkdtemp(prefix="kahvecell-test-")
 os.environ["DATABASE_URL"] = f"sqlite:///{_tmp_dir}/test.db"
 os.environ["RATE_LIMIT_ENABLED"] = "false"
+# Testler her seferinde tabloları modellerden hızlıca kurar; migration'lar ayrı test edilir.
+os.environ["AUTO_MIGRATE"] = "false"
 os.environ["APP_ENV"] = "test"
 
 import pytest  # noqa: E402
@@ -36,10 +38,28 @@ def db():
         yield session
 
 
+def register_body(phone: str = "0555 111 22 33", **extra) -> dict:
+    return {"phone_number": phone, "full_name": "Ali Yılmaz", "email": "ali@example.com", **extra}
+
+
+def verify(client: TestClient, phone: str, code: str = "1234"):
+    return client.post("/api/v1/auth/verify-otp", json={"phone_number": phone, "code": code})
+
+
+def signup(client: TestClient, phone: str = "0555 111 22 33") -> dict:
+    """Yeni kullanıcı kaydı + OTP doğrulama; verify-otp yanıtının data kısmını döner."""
+    res = client.post("/api/v1/auth/register", json=register_body(phone))
+    assert res.status_code == 201, res.text
+    res = verify(client, phone)
+    assert res.status_code == 200, res.text
+    return res.json()["data"]
+
+
 def login(client: TestClient, phone: str = "0555 111 22 33") -> dict:
-    """Kayıt + OTP doğrulama yapıp verify-otp yanıtının data kısmını döner."""
-    assert client.post("/api/v1/auth/register", json={"phone_number": phone}).status_code == 200
-    res = client.post("/api/v1/auth/verify-otp", json={"phone_number": phone, "code": "1234"})
+    """Kayıtlı kullanıcı girişi (request-otp + verify-otp)."""
+    res = client.post("/api/v1/auth/request-otp", json={"phone_number": phone})
+    assert res.status_code == 200, res.text
+    res = verify(client, phone)
     assert res.status_code == 200, res.text
     return res.json()["data"]
 

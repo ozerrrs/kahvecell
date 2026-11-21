@@ -1,7 +1,10 @@
 """Veritabanı bağlantısı, oturum yönetimi ve tablo oluşturma."""
 
 from collections.abc import Generator
+from pathlib import Path
 
+from alembic import command
+from alembic.config import Config
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -42,8 +45,18 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-def init_db() -> None:
-    """Eksik tabloları oluşturur (var olanlara dokunmaz)."""
-    from app import models  # noqa: F401  — modellerin Base'e kaydolması için
+BACKEND_DIR = Path(__file__).resolve().parents[2]
 
-    Base.metadata.create_all(bind=engine)
+
+def alembic_config() -> Config:
+    """Uygulama içinden Alembic çalıştırmak için ayar nesnesi (çalışma klasöründen bağımsız)."""
+    config = Config(str(BACKEND_DIR / "alembic.ini"))
+    config.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
+    config.attributes["configure_logger"] = False
+    return config
+
+
+def init_db() -> None:
+    """Veritabanını en güncel şemaya getirir (bekleyen migration'ları uygular)."""
+    if settings.auto_migrate:
+        command.upgrade(alembic_config(), "head")

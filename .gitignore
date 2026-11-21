@@ -10,6 +10,7 @@ __pycache__/
 # Ortam ve veritabanı
 .env
 *.db
+*.db.bak
 
 # Node
 node_modules/

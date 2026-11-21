@@ -1,0 +1,14 @@
+Alembic migration'ları.
+
+Model değiştirdikten sonra (backend klasöründe, sanal ortam açıkken):
+
+    alembic revision --autogenerate -m "kısa açıklama"   # değişiklik dosyasını üret
+    alembic upgrade head                                 # uygula
+
+Diğer komutlar:
+
+    alembic current       # veritabanı hangi adımda
+    alembic history       # tüm adımlar
+    alembic downgrade -1  # son adımı geri al
+
+Backend açılırken bekleyen migration'lar otomatik uygulanır (AUTO_MIGRATE=true).
