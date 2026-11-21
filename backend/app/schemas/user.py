@@ -29,6 +29,17 @@ def normalize_full_name(value: str) -> str:
     return value
 
 
+def validate_password(value: str) -> str:
+    """En az 8 karakter; en az bir harf ve bir rakam."""
+    if len(value) < 8:
+        raise ValueError("Şifre en az 8 karakter olmalı.")
+    if len(value) > 128:
+        raise ValueError("Şifre en fazla 128 karakter olabilir.")
+    if not re.search(r"[A-Za-zÇĞİÖŞÜçğıöşü]", value) or not re.search(r"\d", value):
+        raise ValueError("Şifre en az bir harf ve bir rakam içermeli.")
+    return value
+
+
 def normalize_email(value: str | None) -> str | None:
     """Boşsa None, doluysa küçük harfe çevirip biçimini kontrol eder."""
     if value is None or value.strip() == "":

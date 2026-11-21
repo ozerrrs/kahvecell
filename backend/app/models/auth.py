@@ -21,6 +21,7 @@ class OtpCode(UUIDPrimaryKeyMixin, Base):
     purpose: Mapped[OtpPurpose] = mapped_column(Enum(OtpPurpose), nullable=False)
     pending_full_name: Mapped[str | None] = mapped_column(String(100))
     pending_email: Mapped[str | None] = mapped_column(String(255))
+    pending_password_hash: Mapped[str | None] = mapped_column(String(255))
     code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     is_used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

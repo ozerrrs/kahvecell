@@ -60,7 +60,8 @@ def test_register_email_is_optional_and_normalized(client):
     client.post("/api/v1/auth/register", json=register_body(email="  ALI@Example.com "))
     assert verify(client, "05551112233").json()["data"]["user"]["email"] == "ali@example.com"
 
-    client.post("/api/v1/auth/register", json={"phone_number": "05554443322", "full_name": "Veli"})
+    client.post("/api/v1/auth/register",
+                json={"phone_number": "05554443322", "full_name": "Veli", "password": "Kahve123"})
     assert verify(client, "05554443322").json()["data"]["user"]["email"] is None
 
 
@@ -81,10 +82,46 @@ def test_login_existing_user(client, db):
     assert len(users) == 1
 
 
-def test_request_otp_unknown_user(client):
+def test_login_wrong_password_rejected(client):
+    signup(client)
+    res = client.post("/api/v1/auth/login", json={"phone_number": "05551112233", "password": "Yanlis123"})
+    assert res.status_code == 401
+    assert res.json()["error"]["code"] == "INVALID_CREDENTIALS"
+    # Şifre yanlışken SMS kodu gönderilmemeli → verify de başarısız olur.
+    assert verify(client, "05551112233").status_code == 400
+
+
+def test_login_unknown_user_gets_same_error(client):
+    """Kayıtlı olmayan numara ile yanlış şifre aynı hatayı verir (numara varlığı sızdırılmaz)."""
+    res = client.post("/api/v1/auth/login", json={"phone_number": "05551112233", "password": "Kahve123"})
+    assert res.status_code == 401
+    assert res.json()["error"]["code"] == "INVALID_CREDENTIALS"
+
+
+def test_login_requires_otp_after_password(client):
+    signup(client)
+    res = client.post("/api/v1/auth/login", json={"phone_number": "05551112233", "password": "Kahve123"})
+    assert res.status_code == 200
+    assert "access_token" not in res.json()["data"]  # şifre tek başına oturum açmaz
+    assert verify(client, "05551112233").status_code == 200
+
+
+def test_old_passwordless_endpoint_is_gone(client):
     res = client.post("/api/v1/auth/request-otp", json={"phone_number": "05551112233"})
     assert res.status_code == 404
-    assert res.json()["error"]["code"] == "USER_NOT_FOUND"
+
+
+@pytest.mark.parametrize("password", ["kisa1", "sadeceharf", "12345678", ""])
+def test_weak_password_rejected(client, password):
+    res = client.post("/api/v1/auth/register", json=register_body(password=password))
+    assert res.status_code == 422
+
+
+def test_password_is_stored_hashed(client, db):
+    signup(client)
+    user = db.scalar(select(User).where(User.phone_number == "+905551112233"))
+    assert user.password_hash.startswith("scrypt$")
+    assert "Kahve123" not in user.password_hash
 
 
 # ---------------------------------------------------------------------- OTP

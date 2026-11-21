@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.exceptions import AppException
+from app.core.passwords import hash_password, verify_password
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -34,24 +35,31 @@ class AuthService:
         self.refresh_tokens = RefreshTokenRepository(db)
 
     # ------------------------------------------------------------ kayıt/giriş
-    def register(self, phone_number: str, full_name: str, email: str | None) -> OtpSentResponse:
-        """Yeni kullanıcı kaydı: bilgileri bekletir ve doğrulama kodu gönderir.
+    def register(self, phone_number: str, full_name: str, email: str | None, password: str) -> OtpSentResponse:
+        """Yeni kullanıcı kaydı: bilgileri (şifre hash'iyle) bekletir ve doğrulama kodu gönderir.
 
         Hesap, kod doğrulandığında (/verify-otp) oluşturulur.
         """
         if self.users.get_by_phone(phone_number):
             raise AppException(
                 status.HTTP_409_CONFLICT, "PHONE_ALREADY_REGISTERED",
-                "Bu numara zaten kayıtlı. Giriş yapmak için /auth/request-otp kullanın.",
+                "Bu numara zaten kayıtlı. Giriş yapabilirsiniz.",
             )
-        return self._send_otp(phone_number, OtpPurpose.REGISTER, full_name, email)
+        return self._send_otp(
+            phone_number, OtpPurpose.REGISTER,
+            full_name=full_name, email=email, password_hash=hash_password(password),
+        )
 
-    def request_login_otp(self, phone_number: str) -> OtpSentResponse:
-        """Kayıtlı kullanıcının giriş yapabilmesi için doğrulama kodu gönderir."""
-        if self.users.get_by_phone(phone_number) is None:
+    def login(self, phone_number: str, password: str) -> OtpSentResponse:
+        """Giriş 1. adım: telefon + şifre doğruysa SMS kodu gönderir (2. adım: /verify-otp).
+
+        Numara kayıtlı değilse de aynı hata döner; böylece hangi numaraların kayıtlı olduğu öğrenilemez.
+        """
+        user = self.users.get_by_phone(phone_number)
+        if not verify_password(password, user.password_hash if user else None):
+            logger.info("login_failed phone=%s", _mask(phone_number))
             raise AppException(
-                status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND",
-                "Bu numarayla kayıtlı kullanıcı yok. Önce /auth/register ile kayıt olun.",
+                status.HTTP_401_UNAUTHORIZED, "INVALID_CREDENTIALS", "Telefon numarası veya şifre hatalı."
             )
         return self._send_otp(phone_number, OtpPurpose.LOGIN)
 
@@ -61,6 +69,7 @@ class AuthService:
         purpose: OtpPurpose,
         full_name: str | None = None,
         email: str | None = None,
+        password_hash: str | None = None,
     ) -> OtpSentResponse:
         code = settings.otp_simulated_code
         expires_in = settings.otp_expire_minutes * 60
@@ -69,7 +78,7 @@ class AuthService:
         self.otps.create(
             phone_number, purpose, hash_otp(phone_number, code),
             utcnow() + timedelta(seconds=expires_in),
-            pending_full_name=full_name, pending_email=email,
+            pending_full_name=full_name, pending_email=email, pending_password_hash=password_hash,
         )
         self.db.commit()
 
@@ -111,7 +120,10 @@ class AuthService:
                 raise AppException(
                     status.HTTP_409_CONFLICT, "PHONE_ALREADY_REGISTERED", "Bu numara zaten kayıtlı."
                 )
-            user = self.users.create(phone_number, full_name=otp.pending_full_name, email=otp.pending_email)
+            user = self.users.create(
+                phone_number, full_name=otp.pending_full_name, email=otp.pending_email,
+                password_hash=otp.pending_password_hash,
+            )
             logger.info("user_registered user_id=%s", user.id)
         elif user is None:
             self.db.commit()

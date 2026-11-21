@@ -28,6 +28,7 @@ class OtpRepository:
         expires_at: datetime,
         pending_full_name: str | None = None,
         pending_email: str | None = None,
+        pending_password_hash: str | None = None,
     ) -> OtpCode:
         otp = OtpCode(
             phone_number=phone_number,
@@ -36,6 +37,7 @@ class OtpRepository:
             expires_at=expires_at,
             pending_full_name=pending_full_name,
             pending_email=pending_email,
+            pending_password_hash=pending_password_hash,
         )
         self.db.add(otp)
         self.db.flush()

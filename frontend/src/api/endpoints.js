@@ -6,7 +6,7 @@ import { api } from './client'
 
 export const authApi = {
   register: (body) => api.post('/auth/register', body),
-  requestOtp: (phone_number) => api.post('/auth/request-otp', { phone_number }),
+  login: (phone_number, password) => api.post('/auth/login', { phone_number, password }),
   verifyOtp: (phone_number, code) => api.post('/auth/verify-otp', { phone_number, code }),
   logout: (refresh_token) => api.post('/auth/logout', { refresh_token }),
 }

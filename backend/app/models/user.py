@@ -15,6 +15,8 @@ class User(UUIDPrimaryKeyMixin, Base):
     # OTP doğrulandıktan sonra "profil tamamlama" adımında doldurulur, bu yüzden başta boş olabilir.
     full_name: Mapped[str | None] = mapped_column(String(100))
     email: Mapped[str | None] = mapped_column(String(255))
+    # scrypt hash'i (bkz. app.core.passwords). Düz şifre hiçbir yerde saklanmaz.
+    password_hash: Mapped[str | None] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.CUSTOMER, nullable=False)
     # Örn: {"favorite_coffees": ["latte"], "allergens": ["lactose"]}
     preferences: Mapped[dict | None] = mapped_column(JSON)

@@ -115,7 +115,7 @@ Tarayıcıda http://localhost:5173 adresini açın.
 
 ## Test hesapları
 
-Şifre yoktur; giriş SMS kodu ile yapılır. SMS simülasyonu olduğu için kod her zaman **`1234`**'tür.
+Tüm test hesaplarının şifresi **`Kahve123`**. Şifreden sonra SMS kodu sorulur; simülasyonda kod her zaman **`1234`**'tür.
 
 | Rol | Telefon | Not |
 |---|---|---|
@@ -127,17 +127,23 @@ Tarayıcıda http://localhost:5173 adresini açın.
 
 | Endpoint | Ne zaman | Gövde |
 |---|---|---|
-| `POST /api/v1/auth/register` | Yeni kullanıcı | `{"phone_number": "05559998877", "full_name": "Ali Yılmaz", "email": "ali@example.com"}` |
-| `POST /api/v1/auth/request-otp` | Kayıtlı kullanıcı girişi | `{"phone_number": "05551234567"}` |
-| `POST /api/v1/auth/verify-otp` | Her iki durumda kodu doğrulama | `{"phone_number": "05551234567", "code": "1234"}` |
+İki aşamalı doğrulama: **şifre + SMS kodu**, hem kayıtta hem her girişte.
+
+| Endpoint | Ne zaman | Gövde |
+|---|---|---|
+| `POST /api/v1/auth/register` | Kayıt 1. adım | `{"phone_number": "05559998877", "full_name": "Ali Yılmaz", "password": "Kahve123"}` |
+| `POST /api/v1/auth/login` | Giriş 1. adım (şifre doğruysa SMS gönderilir) | `{"phone_number": "05551234567", "password": "Kahve123"}` |
+| `POST /api/v1/auth/verify-otp` | Her ikisinin 2. adımı | `{"phone_number": "05551234567", "code": "1234"}` |
 | `POST /api/v1/auth/refresh` | Erişim anahtarı süresi dolunca | `{"refresh_token": "..."}` |
 | `POST /api/v1/auth/logout` | Çıkış | `{"refresh_token": "..."}` |
 
-Hesap, `register` sonrası kod doğrulandığında oluşturulur. Kayıtlı bir numarayla `register` → **409**, kayıtsız bir numarayla `request-otp` → **404** döner.
+- Hesap, `register` sonrası kod doğrulandığında oluşturulur. Kayıtlı bir numarayla `register` → **409**.
+- Yanlış şifre ve kayıtsız numara aynı hatayı verir (**401** `INVALID_CREDENTIALS`); hangi numaraların kayıtlı olduğu öğrenilemez.
+- Şifre kuralı: en az 8 karakter, en az bir harf ve bir rakam. Şifreler **scrypt** ile tuzlanıp hash'lenerek saklanır.
 
 ### Swagger'da giriş yapma
 
-1. `POST /api/v1/auth/request-otp` → `{"phone_number": "05551234567"}`
+1. `POST /api/v1/auth/login` → `{"phone_number": "05551234567", "password": "Kahve123"}`
 2. `POST /api/v1/auth/verify-otp` → `{"phone_number": "05551234567", "code": "1234"}`
 3. Dönen `access_token` değerini kopyalayın.
 4. Sayfanın üstündeki **Authorize 🔓** düğmesine basıp yapıştırın.

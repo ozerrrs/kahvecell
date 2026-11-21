@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal, init_db
+from app.core.passwords import hash_password
 from app.models import Payment, Product, Shop, Subscription, SubscriptionPlan, User
 from app.models.base import utcnow
 from app.models.enums import PaymentPurpose, PaymentStatus, PlanType, SubscriptionStatus, UserRole
@@ -31,8 +32,10 @@ PLANS = [
 ]
 
 # ---------------------------------------------------------------------------
-# Test kullanıcıları  (giriş: telefon numarası + SMS kodu 1234)
+# Test kullanıcıları  (giriş: telefon + şifre "Kahve123" → SMS kodu 1234)
 # ---------------------------------------------------------------------------
+TEST_PASSWORD = "Kahve123"
+
 TEST_CUSTOMER = dict(
     phone_number="+905551234567",
     full_name="Test Müşteri",
@@ -119,11 +122,15 @@ def _round_price(value: Decimal) -> Decimal:
     return (value / 5).quantize(Decimal("1")) * 5
 
 
-def get_or_create_user(db: Session, data: dict) -> tuple[User, bool]:
+def get_or_create_user(db: Session, data: dict, password: str = TEST_PASSWORD) -> tuple[User, bool]:
     user = db.scalar(select(User).where(User.phone_number == data["phone_number"]))
     if user:
+        # Şifre özelliğinden önce oluşturulmuş test hesaplarına şifre ekle.
+        if not user.password_hash:
+            user.password_hash = hash_password(password)
+            print(f"  + Şifre eklendi: {user.full_name} ({user.phone_number})")
         return user, False
-    user = User(**data)
+    user = User(**data, password_hash=hash_password(password))
     db.add(user)
     db.flush()
     return user, True
@@ -210,7 +217,8 @@ def main() -> None:
         for model in (SubscriptionPlan, User, Shop, Product, Subscription, Payment):
             count = len(db.scalars(select(model)).all())
             print(f"  {model.__tablename__:20} {count}")
-        print("\nTamamlandı ✔")
+        print(f"\nTest hesaplarının şifresi: {TEST_PASSWORD}  (SMS kodu: 1234)")
+        print("Tamamlandı ✔")
 
 
 if __name__ == "__main__":

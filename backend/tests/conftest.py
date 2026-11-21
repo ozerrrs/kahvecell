@@ -38,8 +38,12 @@ def db():
         yield session
 
 
+PASSWORD = "Kahve123"  # scripts/seed.py TEST_PASSWORD ile aynı
+
+
 def register_body(phone: str = "0555 111 22 33", **extra) -> dict:
-    return {"phone_number": phone, "full_name": "Ali Yılmaz", "email": "ali@example.com", **extra}
+    return {"phone_number": phone, "full_name": "Ali Yılmaz", "email": "ali@example.com",
+            "password": PASSWORD, **extra}
 
 
 def verify(client: TestClient, phone: str, code: str = "1234"):
@@ -55,9 +59,9 @@ def signup(client: TestClient, phone: str = "0555 111 22 33") -> dict:
     return res.json()["data"]
 
 
-def login(client: TestClient, phone: str = "0555 111 22 33") -> dict:
-    """Kayıtlı kullanıcı girişi (request-otp + verify-otp)."""
-    res = client.post("/api/v1/auth/request-otp", json={"phone_number": phone})
+def login(client: TestClient, phone: str = "0555 111 22 33", password: str = PASSWORD) -> dict:
+    """Kayıtlı kullanıcı girişi (login: telefon + şifre → verify-otp)."""
+    res = client.post("/api/v1/auth/login", json={"phone_number": phone, "password": password})
     assert res.status_code == 200, res.text
     res = verify(client, phone)
     assert res.status_code == 200, res.text

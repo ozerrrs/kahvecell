@@ -6,10 +6,10 @@ from app.core.database import get_db
 from app.core.rate_limit import limiter
 from app.schemas.auth import (
     AuthResult,
+    LoginRequest,
     OtpSentResponse,
     RefreshTokenRequest,
     RegisterRequest,
-    RequestOtpRequest,
     TokenPair,
     VerifyOtpRequest,
 )
@@ -22,21 +22,22 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register", response_model=ApiResponse[OtpSentResponse], status_code=status.HTTP_201_CREATED)
 @limiter.limit(settings.auth_rate_limit)
 def register(request: Request, body: RegisterRequest, db: Session = Depends(get_db)):
-    """Yeni kullanıcı kaydı. OTP gönderildikten sonra /verify-otp ile doğrulanır.
+    """Yeni kullanıcı kaydı (telefon, ad soyad, şifre). OTP gönderildikten sonra /verify-otp ile doğrulanır.
 
-    SMS simülasyonu: kod her zaman `1234`. Numara zaten kayıtlıysa **409** döner.
+    Şifre: en az 8 karakter, en az bir harf ve bir rakam. SMS simülasyonu: kod her zaman `1234`.
+    Numara zaten kayıtlıysa **409** döner.
     """
-    return ok(AuthService(db).register(body.phone_number, body.full_name, body.email))
+    return ok(AuthService(db).register(body.phone_number, body.full_name, body.email, body.password))
 
 
-@router.post("/request-otp", response_model=ApiResponse[OtpSentResponse])
+@router.post("/login", response_model=ApiResponse[OtpSentResponse])
 @limiter.limit(settings.auth_rate_limit)
-def request_otp(request: Request, body: RequestOtpRequest, db: Session = Depends(get_db)):
-    """Kayıtlı kullanıcı için giriş kodu gönderir. Ardından /verify-otp ile doğrulanır.
+def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
+    """Giriş 1. adım: telefon + şifre. Doğruysa SMS kodu gönderilir; 2. adım /verify-otp.
 
-    Numara kayıtlı değilse **404** döner.
+    Numara veya şifre hatalıysa **401** `INVALID_CREDENTIALS` (hangisinin hatalı olduğu söylenmez).
     """
-    return ok(AuthService(db).request_login_otp(body.phone_number))
+    return ok(AuthService(db).login(body.phone_number, body.password))
 
 
 @router.post("/verify-otp", response_model=ApiResponse[AuthResult])
@@ -44,7 +45,8 @@ def request_otp(request: Request, body: RequestOtpRequest, db: Session = Depends
 def verify_otp(request: Request, body: VerifyOtpRequest, db: Session = Depends(get_db)):
     """OTP'yi doğrular, geçerliyse access + refresh token döner.
 
-    Kayıt akışında hesap bu adımda oluşturulur (`is_new_user: true`).
+    Kayıtta hesap bu adımda oluşturulur (`is_new_user: true`). Girişte bu adıma sadece
+    şifre doğrulandıktan sonra gelinebilir.
     """
     return ok(AuthService(db).verify_otp(body.phone_number, body.code))
 

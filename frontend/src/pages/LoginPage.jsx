@@ -1,89 +1,73 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { authApi } from '../api/endpoints'
-import { useAuthStore } from '../store/authStore'
-import { isValidPhone } from '../utils/validation'
+import PasswordInput from '../components/PasswordInput'
+import { useOtpFlowStore } from '../store/otpFlowStore'
+import { formatPhone, isValidPhone } from '../utils/validation'
 
-/** Giriş: 1) telefon → SMS kodu  2) kod → oturum. Kayıt sonrası doğrulama da bu sayfadan yapılır. */
+/** Giriş 1. adım: telefon + şifre. Doğruysa SMS kodu gönderilir ve /verify ekranına geçilir. */
 export default function LoginPage() {
-  const location = useLocation()
   const navigate = useNavigate()
-  const setSession = useAuthStore((s) => s.setSession)
-
-  // Kayıt sayfasından gelindiyse kod zaten gönderilmiştir: doğrudan 2. adım.
-  const [phone, setPhone] = useState(location.state?.phone ?? '')
-  const [step, setStep] = useState(location.state?.phone ? 'code' : 'phone')
-  const [code, setCode] = useState('')
-  const [hint, setHint] = useState(location.state?.hint ?? null)
-  const [error, setError] = useState(null)
+  const location = useLocation()
+  const startFlow = useOtpFlowStore((s) => s.start)
+  const [form, setForm] = useState({ phone_number: '', password: '' })
+  const [errors, setErrors] = useState({})
+  const [serverError, setServerError] = useState(null)
   const [busy, setBusy] = useState(false)
 
-  async function requestCode(event) {
+  async function submit(event) {
     event.preventDefault()
-    if (!isValidPhone(phone)) return setError('Geçerli bir GSM numarası girin (örn. 0555 123 45 67).')
-    setBusy(true)
-    setError(null)
-    try {
-      const res = await authApi.requestOtp(phone)
-      setHint(res.dev_otp_hint)
-      setStep('code')
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setBusy(false)
-    }
-  }
+    const next = {}
+    if (!isValidPhone(form.phone_number)) next.phone_number = 'Geçerli bir GSM numarası girin.'
+    if (!form.password) next.password = 'Şifrenizi girin.'
+    setErrors(next)
+    if (Object.keys(next).length) return
 
-  async function verify(event) {
-    event.preventDefault()
-    if (!/^\d{4,6}$/.test(code)) return setError('Kod 4-6 haneli olmalı.')
     setBusy(true)
-    setError(null)
+    setServerError(null)
     try {
-      const session = await authApi.verifyOtp(phone, code)
-      setSession(session)
-      navigate(location.state?.from ?? '/', { replace: true })
+      const res = await authApi.login(form.phone_number, form.password)
+      startFlow({
+        purpose: 'login', request: form, phone: form.phone_number,
+        hint: res.dev_otp_hint, expiresIn: res.otp_expires_in_seconds,
+        redirectTo: location.state?.from ?? '/',
+      })
+      navigate('/verify')
     } catch (err) {
-      setError(err.message)
+      setServerError(err.message)
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <section className="narrow">
-      <h1>Giriş yap</h1>
-      {step === 'phone' ? (
-        <form onSubmit={requestCode} className="form" noValidate>
-          <label>
-            GSM numarası
-            <input
-              type="tel" inputMode="tel" autoComplete="tel" placeholder="0555 123 45 67"
-              value={phone} onChange={(e) => setPhone(e.target.value)} required
-            />
-          </label>
-          {error && <p className="form-error" role="alert">{error}</p>}
-          <button className="btn" disabled={busy}>{busy ? 'Gönderiliyor…' : 'Kod gönder'}</button>
-          <p className="muted">Hesabın yok mu? <Link to="/register">Kayıt ol</Link></p>
-        </form>
-      ) : (
-        <form onSubmit={verify} className="form" noValidate>
-          <p className="muted">{phone} numarasına gönderilen kodu girin.</p>
-          {hint && <p className="hint">Test ortamı: kod <strong>{hint}</strong></p>}
-          <label>
-            Doğrulama kodu
-            <input
-              inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus
-              value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} required
-            />
-          </label>
-          {error && <p className="form-error" role="alert">{error}</p>}
-          <button className="btn" disabled={busy}>{busy ? 'Doğrulanıyor…' : 'Giriş yap'}</button>
-          <button type="button" className="btn btn-link" onClick={() => { setStep('phone'); setCode(''); setError(null) }}>
-            Numarayı değiştir
-          </button>
-        </form>
-      )}
-    </section>
+    <>
+      <h1>Tekrar hoş geldin</h1>
+      <p className="auth-subtitle">Hesabına giriş yap.</p>
+      <form onSubmit={submit} className="form" noValidate>
+        <label>
+          GSM numarası
+          <input
+            type="tel" inputMode="tel" autoComplete="tel" placeholder="0555 123 45 67"
+            value={form.phone_number}
+            onChange={(e) => setForm({ ...form, phone_number: formatPhone(e.target.value) })}
+            aria-invalid={!!errors.phone_number || undefined}
+          />
+          {errors.phone_number && <span className="field-error">{errors.phone_number}</span>}
+        </label>
+        <label htmlFor="login-password">
+          Şifre
+          <PasswordInput
+            id="login-password" value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            invalid={!!errors.password}
+          />
+          {errors.password && <span className="field-error">{errors.password}</span>}
+        </label>
+        {serverError && <p className="form-error" role="alert">{serverError}</p>}
+        <button className="btn" disabled={busy}>{busy ? 'Kontrol ediliyor…' : 'Giriş yap'}</button>
+      </form>
+      <p className="auth-footer">Hesabın yok mu? <Link to="/register">Kayıt ol</Link></p>
+    </>
   )
 }

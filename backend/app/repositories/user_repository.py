@@ -20,9 +20,11 @@ class UserRepository:
         phone_number: str,
         full_name: str | None = None,
         email: str | None = None,
+        password_hash: str | None = None,
         role: UserRole = UserRole.CUSTOMER,
     ) -> User:
-        user = User(phone_number=phone_number, full_name=full_name, email=email, role=role)
+        user = User(phone_number=phone_number, full_name=full_name, email=email,
+                    password_hash=password_hash, role=role)
         self.db.add(user)
         self.db.flush()
         return user

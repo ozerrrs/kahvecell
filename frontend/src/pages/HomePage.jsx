@@ -4,16 +4,21 @@ import { shopsApi } from '../api/endpoints'
 import ShopMap from '../components/ShopMap'
 import { AsyncView } from '../components/StateViews'
 import { useApi } from '../hooks/useApi'
+import { useAuthStore } from '../store/authStore'
 import { KIZILAY } from '../utils/geo'
 
 export default function HomePage() {
   // Şimdilik konum olarak Kızılay kullanılıyor; tarayıcı konumu sonraki adımda eklenecek.
   const [location] = useState(KIZILAY)
+  const user = useAuthStore((s) => s.user)
   const shops = useApi(() => shopsApi.list({ lat: location.lat, lng: location.lng, radius: 20 }), [location])
 
   return (
     <section>
-      <h1>Yakındaki dükkânlar</h1>
+      <div className="welcome">
+        <h1>{user?.full_name ? `Hoş geldin, ${user.full_name.split(' ')[0]} 👋` : 'Hoş geldin 👋'}</h1>
+        <p className="muted">Yakınındaki anlaşmalı kahve dükkânları</p>
+      </div>
       <AsyncView
         {...shops}
         onRetry={shops.reload}

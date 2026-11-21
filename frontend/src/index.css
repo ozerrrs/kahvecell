@@ -1,17 +1,26 @@
 /* KahveCell — sade temel stiller. Renkler tek yerden (değişkenler) yönetilir. */
 
 :root {
-  --color-bg: #f7f5f2;
-  --color-surface: #ffffff;
-  --color-text: #1f1b16;
-  --color-muted: #6b6259;
-  --color-border: #e4ddd5;
-  --color-primary: #6f4e37;
+  /* Kahve paleti */
+  --coffee-espresso: #3b2416;
+  --coffee-roast: #6f4e37;
+  --coffee-mocha: #8b5e3c;
+  --coffee-caramel: #c08552;
+  --coffee-latte: #e6ccb2;
+  --coffee-cream: #f5ebe0;
+  --coffee-foam: #fffaf4;
+
+  --color-bg: var(--coffee-cream);
+  --color-surface: var(--coffee-foam);
+  --color-text: var(--coffee-espresso);
+  --color-muted: #7a6455;
+  --color-border: #e8d9c8;
+  --color-primary: var(--coffee-roast);
   --color-primary-hover: #5a3e2b;
   --color-on-primary: #ffffff;
   --color-error: #b42318;
   --color-ok: #067647;
-  --color-hint-bg: #fff7e6;
+  --color-hint-bg: #fdf0dc;
   --radius: 10px;
   --space: 16px;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -94,3 +103,80 @@ code { font-size: 0.85em; word-break: break-all; }
 
 /* Harita */
 .map { border-radius: var(--radius); border: 1px solid var(--color-border); z-index: 0; }
+
+/* ------------------------------------------------------------------ */
+/* Giriş / kayıt / doğrulama: ortada tek kart                          */
+/* ------------------------------------------------------------------ */
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(192, 133, 82, 0.18), transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(111, 78, 55, 0.16), transparent 45%),
+    var(--coffee-cream);
+}
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--coffee-foam);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 32px 28px 28px;
+  box-shadow: 0 1px 2px rgba(59, 36, 22, 0.06), 0 12px 32px rgba(59, 36, 22, 0.12);
+  animation: rise 0.35s ease-out;
+}
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .auth-card { animation: none; } }
+
+.auth-brand { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 20px; text-decoration: none; }
+.auth-logo {
+  width: 56px; height: 56px; border-radius: 16px;
+  display: grid; place-items: center; font-size: 28px;
+  background: linear-gradient(135deg, var(--coffee-caramel), var(--coffee-roast));
+  box-shadow: 0 6px 16px rgba(111, 78, 55, 0.35);
+}
+.auth-brand-name { font-weight: 700; letter-spacing: 0.02em; color: var(--coffee-espresso); }
+.auth-card h1 { text-align: center; font-size: 1.35rem; margin-bottom: 4px; }
+.auth-subtitle { text-align: center; color: var(--color-muted); margin: 0 0 24px; font-size: 0.95rem; }
+.auth-footer { text-align: center; color: var(--color-muted); font-size: 0.9rem; margin: 20px 0 0; }
+.auth-footer a { font-weight: 600; }
+.auth-card .btn { width: 100%; padding: 12px; }
+.auth-card .btn-link { width: auto; }
+
+.form input:focus { border-color: var(--coffee-caramel); outline: none; box-shadow: 0 0 0 3px rgba(192, 133, 82, 0.25); }
+.field-help { color: var(--color-muted); font-size: 0.8rem; font-weight: 400; }
+
+/* Şifre göster/gizle */
+.password-field { position: relative; display: flex; }
+.password-field input { flex: 1; padding-right: 64px; }
+.password-toggle {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--color-primary);
+  font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; padding: 6px 8px; border-radius: 6px;
+}
+.password-toggle:hover { background: var(--coffee-cream); }
+
+/* OTP kutucukları */
+.otp-inputs { display: flex; justify-content: center; gap: 12px; margin: 4px 0; }
+.otp-inputs input {
+  width: 56px; height: 64px; text-align: center;
+  font-size: 1.6rem; font-weight: 700; color: var(--coffee-espresso);
+  border: 2px solid var(--color-border); border-radius: 14px; background: #fff;
+  padding: 0;
+}
+.otp-inputs input:focus { border-color: var(--coffee-caramel); outline: none; box-shadow: 0 0 0 4px rgba(192, 133, 82, 0.2); }
+.otp-inputs[aria-invalid='true'] input { border-color: var(--color-error); }
+.otp-phone { font-weight: 600; color: var(--coffee-espresso); }
+.test-note {
+  display: flex; gap: 8px; align-items: center; justify-content: center;
+  background: var(--color-hint-bg); color: #7a4a1d;
+  border: 1px dashed var(--coffee-caramel); border-radius: 10px;
+  padding: 8px 12px; font-size: 0.875rem; margin: 0;
+}
+.otp-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; color: var(--color-muted); }
+
+/* Hoşgeldin başlığı */
+.welcome { margin-bottom: 20px; }
+.welcome h1 { margin-bottom: 4px; }
