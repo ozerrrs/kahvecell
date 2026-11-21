@@ -1,0 +1,8 @@
+"""İstek sınırlama (rate limiting) — aynı IP'den kısa sürede çok fazla isteği engeller."""
+
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+from app.core.config import settings
+
+limiter = Limiter(key_func=get_remote_address, enabled=settings.rate_limit_enabled)
