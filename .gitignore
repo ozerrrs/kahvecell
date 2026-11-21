@@ -1,2 +1,19 @@
 .lh
 .history
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Ortam ve veritabanı
+.env
+*.db
+
+# Node
+node_modules/
+dist/
+
+# İşletim sistemi
+.DS_Store
