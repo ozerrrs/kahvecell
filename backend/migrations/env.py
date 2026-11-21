@@ -45,6 +45,12 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
+        if _is_sqlite:
+            # SQLite'ta "batch" değişiklikler tabloyu kopyalayıp eskisini siler. Foreign key
+            # kontrolü açıkken bu silme, bağlı tablolardaki satırları da (ON DELETE CASCADE)
+            # siler. Migration süresince kapatıp sonunda bütünlüğü kontrol ediyoruz.
+            connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+            connection.commit()  # PRAGMA'nın etkili olması için açık işlem kalmamalı
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
@@ -54,6 +60,12 @@ def run_migrations_online() -> None:
         )
         with context.begin_transaction():
             context.run_migrations()
+        if _is_sqlite:
+            violations = connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall()
+            connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+            connection.commit()
+            if violations:
+                raise RuntimeError(f"Migration sonrası foreign key ihlali: {violations[:5]}")
 
 
 if context.is_offline_mode():

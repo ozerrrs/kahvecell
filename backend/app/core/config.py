@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # Abonelik
     subscription_period_days: int = 30
 
+    # Dükkânlar
+    shop_timezone: str = "Europe/Istanbul"  # "şu an açık mı?" hesabı için
+    default_search_radius_km: float = 5.0
+
     # Rate limiting
     rate_limit_enabled: bool = True
     auth_rate_limit: str = "10/minute"

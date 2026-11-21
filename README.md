@@ -160,6 +160,19 @@ Artık giriş gerektiren endpoint'leri deneyebilirsiniz.
 
 Kart numarasının tamamı saklanmaz, yalnızca son 4 hanesi kaydedilir. Başarısız ödemeler de geçmişte tutulur (`GET /payments/me`).
 
+## Dükkânlar ve konum
+
+| Endpoint | Açıklama |
+|---|---|
+| `GET /api/v1/shops` | Tüm dükkânlar (puana göre) |
+| `GET /api/v1/shops?lat=39.9208&lng=32.8541&radius=5` | Yakındakiler, en yakından uzağa, `distance_km` ile |
+| `GET /api/v1/shops?q=kizilay` | Ad/adres araması (Türkçe karakter ve büyük/küçük harf duyarsız) |
+| `GET /api/v1/shops?min_rating=4.5&open_now=true&sort=name` | Filtre ve sıralama |
+| `GET /api/v1/shops/{id}?lat=..&lng=..` | Detay + kategorilere ayrılmış menü + mesafe |
+| `GET /api/v1/shops/{id}/menu` | Sadece menü |
+
+Mesafe **Haversine** formülüyle hesaplanır. Önce `(latitude, longitude)` index'i ile kare alan dışındaki dükkânlar veritabanında elenir, sonra kalanların kesin mesafesi hesaplanır. "Şu an açık mı?" Türkiye saatine göredir ve gece yarısını geçen çalışma saatlerini destekler.
+
 ## Veritabanı değişiklikleri (Alembic migration)
 
 Şema değişiklikleri `backend/migrations/versions/` altında numaralı dosyalar olarak tutulur. Backend açılırken bekleyen migration'lar otomatik uygulanır, veriler korunur.

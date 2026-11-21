@@ -1,10 +1,11 @@
-from datetime import time
+from datetime import datetime, time
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Float, ForeignKey, Index, Numeric, String, Text, Time
+from sqlalchemy import Boolean, Float, ForeignKey, Index, Numeric, String, Text, Time, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.core.text import fold_text
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
@@ -26,12 +27,32 @@ class Shop(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     photo_url: Mapped[str | None] = mapped_column(String(500))
     description: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Arama için ad + adres + şehrin sadeleştirilmiş hali (bkz. app.core.text.fold_text).
+    # Kayıt eklenip güncellendiğinde otomatik doldurulur.
+    search_text: Mapped[str | None] = mapped_column(String(500))
 
     owner: Mapped["User | None"] = relationship(back_populates="owned_shops")
-    products: Mapped[list["Product"]] = relationship(back_populates="shop", cascade="all, delete-orphan")
+    products: Mapped[list["Product"]] = relationship(
+        back_populates="shop", cascade="all, delete-orphan", order_by=lambda: (Product.category, Product.name)
+    )
     orders: Mapped[list["Order"]] = relationship(back_populates="shop")
 
     __table_args__ = (Index("ix_shops_lat_lng", "latitude", "longitude"),)
+
+    def is_open_at(self, moment: datetime) -> bool:
+        """Verilen yerel saatte dükkân açık mı? Gece yarısını geçen saatleri de (örn. 08:00–00:00) destekler."""
+        now = moment.time()
+        if self.opens_at == self.closes_at:
+            return True  # 24 saat açık
+        if self.opens_at < self.closes_at:
+            return self.opens_at <= now < self.closes_at
+        return now >= self.opens_at or now < self.closes_at
+
+
+@event.listens_for(Shop, "before_insert")
+@event.listens_for(Shop, "before_update")
+def _fill_search_text(_mapper, _connection, shop: Shop) -> None:
+    shop.search_text = fold_text(f"{shop.name} {shop.address} {shop.city}")
 
 
 class Product(UUIDPrimaryKeyMixin, TimestampMixin, Base):

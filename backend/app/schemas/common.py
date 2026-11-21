@@ -36,3 +36,12 @@ def ok(data: Any) -> dict:
 
 class MessageOut(BaseModel):
     message: str
+
+
+class Page(BaseModel, Generic[T]):
+    """Sayfalı liste yanıtı."""
+
+    items: list[T]
+    total: int
+    page: int
+    page_size: int

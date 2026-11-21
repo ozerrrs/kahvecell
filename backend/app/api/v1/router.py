@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import admin, auth, payments, subscriptions, users
+from app.api.v1 import admin, auth, payments, shops, subscriptions, users
 from app.schemas.common import ok
 
 api_router = APIRouter(prefix="/api/v1")
@@ -16,6 +16,7 @@ def health():
 
 api_router.include_router(auth.router)
 api_router.include_router(users.router)
+api_router.include_router(shops.router)
 api_router.include_router(subscriptions.router)
 api_router.include_router(payments.router)
 api_router.include_router(admin.router)

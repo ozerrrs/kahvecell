@@ -143,18 +143,23 @@ def seed_plans(db: Session) -> dict[PlanType, SubscriptionPlan]:
 
 
 def seed_shops(db: Session, owner: User) -> None:
-    for index, data in enumerate(SHOPS):
-        if db.scalar(select(Shop).where(Shop.name == data["name"])):
-            continue
+    for index, template in enumerate(SHOPS):
+        data = dict(template)  # modül seviyesindeki sabiti değiştirmemek için kopya
         factor = data.pop("price_factor")
-        # İlk dükkânı test dükkân sahibine bağla (dükkân paneli testleri için).
-        shop = Shop(**data, city="Ankara", owner_id=owner.id if index == 0 else None)
-        db.add(shop)
-        db.flush()
-        for name, category, description, price in MENU:
-            db.add(Product(shop_id=shop.id, name=name, category=category,
-                           description=description, base_price=_round_price(price * factor)))
-        print(f"  + Dükkân: {shop.name} ({len(MENU)} ürün)")
+        shop = db.scalar(select(Shop).where(Shop.name == data["name"]))
+        if shop is None:
+            # İlk dükkânı test dükkân sahibine bağla (dükkân paneli testleri için).
+            shop = Shop(**data, city="Ankara", owner_id=owner.id if index == 0 else None)
+            db.add(shop)
+            db.flush()
+            print(f"  + Dükkân: {shop.name}")
+        if not shop.products:
+            for name, category, description, price in MENU:
+                db.add(Product(shop_id=shop.id, name=name, category=category,
+                               description=description, base_price=_round_price(price * factor)))
+            db.flush()
+            db.refresh(shop)
+            print(f"  + Menü: {shop.name} ({len(MENU)} ürün)")
 
 
 def seed_test_subscription(db: Session, user: User, plan: SubscriptionPlan) -> None:
