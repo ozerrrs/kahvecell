@@ -3,11 +3,11 @@
 from dataclasses import dataclass
 from datetime import datetime
 from itertools import groupby
-from zoneinfo import ZoneInfo
 
 from fastapi import status
 from sqlalchemy.orm import Session
 
+from app.core import clock
 from app.core.config import settings
 from app.core.exceptions import AppException
 from app.core.geo import bounding_box, haversine_km
@@ -131,4 +131,4 @@ class ShopService:
 
     @staticmethod
     def _local_now() -> datetime:
-        return datetime.now(ZoneInfo(settings.shop_timezone))
+        return clock.local_now()

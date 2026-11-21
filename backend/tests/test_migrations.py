@@ -8,6 +8,7 @@ import tempfile
 from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, inspect
 
 from app.core.config import settings
@@ -65,7 +66,8 @@ def test_downgrade_and_upgrade_keep_existing_data():
         engine = create_engine(url)
         with engine.connect() as conn:
             assert conn.exec_driver_sql("SELECT count(*) FROM products").scalar() == 1
-            assert conn.exec_driver_sql("SELECT version_num FROM alembic_version").scalar() == "0002"
+            head = ScriptDirectory.from_config(config).get_current_head()
+            assert conn.exec_driver_sql("SELECT version_num FROM alembic_version").scalar() == head
             assert conn.exec_driver_sql("SELECT search_text FROM shops").scalar() == "kizilay kahve adres ankara"
         engine.dispose()
 

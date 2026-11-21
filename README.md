@@ -173,6 +173,30 @@ Kart numarasının tamamı saklanmaz, yalnızca son 4 hanesi kaydedilir. Başar�
 
 Mesafe **Haversine** formülüyle hesaplanır. Önce `(latitude, longitude)` index'i ile kare alan dışındaki dükkânlar veritabanında elenir, sonra kalanların kesin mesafesi hesaplanır. "Şu an açık mı?" Türkiye saatine göredir ve gece yarısını geçen çalışma saatlerini destekler.
 
+## Siparişler ve QR
+
+```
+PENDING ──► ACCEPTED ──► PREPARING ──► READY ──► DELIVERED (QR okutularak)
+   │            │
+   └────────────┴──► CANCELLED (kahve hakkı iade edilir)
+```
+
+| Endpoint | Kim | Açıklama |
+|---|---|---|
+| `POST /api/v1/orders` | Müşteri | Sipariş + 1 hak düşer (Unlimited'da düşmez) + imzalı QR |
+| `GET /api/v1/orders/history` | Müşteri | Geçmiş (`favorites_only=true` ile favoriler) |
+| `GET /api/v1/orders/{id}` | Müşteri / Dükkân | Detay ve durum geçmişi |
+| `GET /api/v1/orders/{id}/qr` | Müşteri | QR kod PNG |
+| `PATCH /api/v1/orders/{id}/favorite` | Müşteri | Favoriye ekle/çıkar |
+| `POST /api/v1/orders/{id}/reorder` | Müşteri | Aynı siparişi tekrar ver |
+| `GET /api/v1/orders/incoming` | Dükkân | Gelen siparişler (Unlimited aboneler önde) |
+| `PATCH /api/v1/orders/{id}/status` | Dükkân / Müşteri | Durum güncelle (müşteri sadece PENDING iptal) |
+| `POST /api/v1/orders/verify-qr` | Dükkân | QR gerçek mi? |
+
+**QR içeriği** (case 13.2): `{"order_id", "user_id", "shop_id", "created_at", "signature"}`. `signature`, ilk dört alanın sunucudaki `QR_SECRET_KEY` ile alınmış **HMAC-SHA256** imzasıdır. Tek karakter değişse imza tutmaz. `DELIVERED` durumuna geçmek için QR'ın okutulması (`qr_data`) zorunludur.
+
+**Kurallar:** Aktif abonelik yoksa `SUBSCRIPTION_REQUIRED`, hak bittiyse `NO_CREDITS_LEFT` (403). Dükkân kapalıysa `SHOP_CLOSED`. Hak düşme tek bir koşullu `UPDATE` ile yapılır, eşzamanlı siparişlerde eksiye düşmez.
+
 ## Veritabanı değişiklikleri (Alembic migration)
 
 Şema değişiklikleri `backend/migrations/versions/` altında numaralı dosyalar olarak tutulur. Backend açılırken bekleyen migration'lar otomatik uygulanır, veriler korunur.

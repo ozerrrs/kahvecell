@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # Abonelik
     subscription_period_days: int = 30
 
+    # Sipariş QR imzası (HMAC-SHA256) — üretimde mutlaka uzun ve rastgele bir değer kullanın
+    qr_secret_key: str = "dev-only-qr-secret-change-me-0123456789abcdef"
+
     # Dükkânlar
     shop_timezone: str = "Europe/Istanbul"  # "şu an açık mı?" hesabı için
     default_search_radius_km: float = 5.0

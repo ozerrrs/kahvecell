@@ -1,8 +1,10 @@
-from sqlalchemy import Boolean, Enum, ForeignKey, Index, Integer, String
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, String, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
-from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin, utcnow
 from app.models.enums import CupSize, MilkType, OrderStatus
 
 
@@ -16,6 +18,8 @@ class Order(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), nullable=False)
     # Hakkın hangi abonelikten düşüldüğü
     subscription_id: Mapped[str] = mapped_column(ForeignKey("subscriptions.id"), nullable=False)
+    # Bu sipariş için kahve hakkı düşüldü mü? (sınırsız pakette False) — iptalde iade için.
+    credit_used: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
 
     # Özelleştirmeler
     size: Mapped[CupSize] = mapped_column(Enum(CupSize), default=CupSize.M, nullable=False)
@@ -33,8 +37,25 @@ class Order(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     shop: Mapped["Shop"] = relationship(back_populates="orders")
     product: Mapped["Product"] = relationship(back_populates="orders")
     subscription: Mapped["Subscription"] = relationship(back_populates="orders")
+    events: Mapped[list["OrderStatusEvent"]] = relationship(
+        back_populates="order", cascade="all, delete-orphan", order_by="OrderStatusEvent.created_at"
+    )
 
     __table_args__ = (
         Index("ix_orders_user_created", "user_id", "created_at"),
         Index("ix_orders_shop_status", "shop_id", "status"),
     )
+
+
+class OrderStatusEvent(UUIDPrimaryKeyMixin, Base):
+    """Sipariş durum geçmişi: her durum değişikliği kim tarafından, ne zaman yapıldı."""
+
+    __tablename__ = "order_status_events"
+
+    order_id: Mapped[str] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True, nullable=False)
+    status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus), nullable=False)
+    changed_by_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    order: Mapped["Order"] = relationship(back_populates="events")
+    changed_by: Mapped["User | None"] = relationship()
